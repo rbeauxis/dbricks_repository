@@ -1,0 +1,8 @@
+{
+    "jupyter.interactiveWindow.cellMarker.codeRegex": "^# COMMAND ----------|^# Databricks notebook source|^(#\\s*%%|#\\s*\\<codecell\\>|#\\s*In\\[\\d*?\\]|#\\s*In\\[ \\])",
+    "jupyter.interactiveWindow.cellMarker.default": "# COMMAND ----------",
+    "python.defaultInterpreterPath": "c:\\Users\\rodri\\repo_snowflake\\databricks\\.venv311\\Scripts\\python.exe",
+    "yaml.schemas": {
+        "https://raw.githubusercontent.com/databricks/cli/main/resources/schemas/bundle/bundle.schema.json": ["*databricks.yml", "databricks.yml"]
+    }
+}
