@@ -110,7 +110,15 @@ Sube tus archivos de código y compila/crea tus recursos (Jobs, Delta Live Table
 ```powershell
 databricks bundle deploy -t dev
 ```
-*   **Qué hace:** Compila y sube tus notebooks/archivos `.py` o `.sql` a la ruta `root_path` definida para tu target `dev` y aprovisiona de forma automática los Jobs y DLT Pipelines en el Workspace.
+*   **Qué hace:** Compila y sube tus notebooks/archivos `.py` o `.sql` a tu espacio de desarrollo personal en Databricks y aprovisiona automáticamente tus Jobs y Pipelines.
+*   **⚠️ REGLA DE SEGURIDAD OBLIGATORIA (Especificar Target y Perfil):**
+    *   **Especificar Target (`-t dev`):** Aunque en `databricks.yml` exista un target predeterminado, **nunca dependas del comportamiento implícito**. Especifica siempre de forma explícita el parámetro `-t <entorno>` en tus comandos (ej. `databricks bundle deploy -t dev`). Esto evita que un cambio accidental en tu archivo de configuración despliegue en producción o sobreescriba recursos equivocados.
+    *   **Especificar Perfil (`profile`):** Asegúrate de que la propiedad `profile` esté indicada de forma explícita en cada target dentro de tu `databricks.yml`. Si omites indicar el perfil, el CLI de Databricks usará por defecto el perfil marcado como `(Default)`. Si trabajas con múltiples clientes o cuentas en tu PC, corres el riesgo de desplegar por error en el Workspace equivocado. *El perfil explícito es tu escudo.*
+*   **💡 PROTECCIONES AUTOMÁTICAS DEL MODO DESARROLLO (`mode: development`):**
+    Cuando compilas bajo el target `dev` (que tiene activado el modo de desarrollo en `databricks.yml`), Databricks CLI activa de forma transparente tres salvaguardas esenciales:
+    1.  **Aislamiento Total:** Todo se despliega en tu directorio personal de usuario en el Workspace (ej: `/Users/tu_usuario/.bundle/...`), garantizando que no pises el trabajo de ningún compañero.
+    2.  **Sufijos de Seguridad:** Los recursos creados (como Pipelines DLT) incluirán tu identificador de usuario para distinguirlos visualmente.
+    3.  **Pausa de Costos en la Nube:** Databricks **pausará automáticamente todos los horarios (schedules), disparadores (triggers) y ejecuciones continuas** de tus Jobs y pipelines. De este modo, evitas consumir créditos de cómputo en la nube de forma accidental en segundo plano cuando no estás trabajando.
 
 ### C. Ejecución de Recursos desde la Terminal Local
 Puedes iniciar y monitorear la ejecución de tus recursos directamente desde tu máquina local sin abrir el navegador:
@@ -144,6 +152,14 @@ databricks bundle destroy -t dev
 ## 6. El Ciclo de Desarrollo Diario Unificado (Git + DAB)
 
 El flujo de trabajo óptimo y profesional para ingenieros de datos combina la velocidad de la iteración local con la seguridad del control de versiones. Sigue este ciclo paso a paso cada día:
+
+> [!IMPORTANT]
+> **⚠️ REGLA DE ORO DEL DESARROLLO (Orden Obligatorio):**
+> 
+> *   **Primero se testea con DABs:** Modificas tus fuentes y utilizas `databricks bundle deploy` o `sync` para compilar y probar tus cambios en el entorno real de Databricks, certificando que el pipeline y los datos corren con éxito.
+> *   **Luego se sube a Git:** Solo cuando hayas verificado visual y operacionalmente en Databricks Web que tu pipeline funciona al 100%, realizas el `git commit` y `git push` para guardar tu avance en GitHub.
+> 
+> *¡Nunca envíes código al repositorio remoto que no haya sido ejecutado y validado en la nube con DABs primero!*
 
 ### Paso 1: Sincronizar el repositorio y crear una rama de trabajo
 Antes de empezar a escribir código, asegúrate de estar en la última versión de la rama principal y crea tu propia rama:

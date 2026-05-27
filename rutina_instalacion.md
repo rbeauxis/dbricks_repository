@@ -137,6 +137,8 @@ databricks auth login --host https://adb-7405609127094080.0.azuredatabricks.net 
     ```
     Este comando detecta cambios locales en tiempo real y los sincroniza instantáneamente con tu Workspace en una ruta de desarrollo segura, ideal para iteraciones rápidas sin chocar con Git.
 
+> **⚠️ REGLA DE SEGURIDAD OBLIGATORIA (Especificar siempre el Target `-t`):** Aunque un target esté marcado como predeterminado (`default: true`), es una práctica de ingeniería obligatoria especificar siempre el flag `-t <entorno>` de forma explícita en todos tus comandos de deploy, run o sync (ej: `databricks bundle deploy -t dev` o `databricks bundle deploy -t prod`). Esto evita accidentes de sobreescritura involuntaria de recursos o entornos equivocados en el futuro.
+
 ---
 
 ## 7. Creación de un Proyecto desde Cero (Configuración en VS Code IDE)
@@ -234,7 +236,7 @@ Tus perfiles de autenticación local se guardan en el archivo `~/.databrickscfg`
 
 *   **En la terminal (Paso 3):**
     ```powershell
-    databricks auth login --host https://adb-7405609127094080.0.azuredatabricks.net --profile luis_beauxis
+    databricks auth login --host https://dbc-7e3d85b9-25a9.cloud.databricks.com --profile community
     ```
 *   **En el archivo `databricks.yml`:**
     ```yaml
@@ -243,10 +245,16 @@ Tus perfiles de autenticación local se guardan en el archivo `~/.databrickscfg`
         mode: development
         default: true
         workspace:
-          host: https://adb-7405609127094080.0.azuredatabricks.net
-          root_path: /Users/luis.beauxis@ucu.edu.uy/dbricks_repository
-          profile: luis_beauxis  # <--- DEBE COINCIDIR EXACTAMENTE CON EL PERFIL DEL CLI
+          host: https://dbc-7e3d85b9-25a9.cloud.databricks.com
+          profile: community  # <--- DEBE COINCIDIR EXACTAMENTE CON EL PERFIL DEL CLI
     ```
+
+> [!WARNING]
+> **⚠️ REGLA DE ORO DE SEGURIDAD (Obligatorio indicar el Perfil):**
+> 
+> Es una práctica de seguridad fundamental e innegociable **especificar siempre la propiedad `profile` de forma explícita dentro de cada target** en tu `databricks.yml`. 
+> 
+> Si omites la clave `profile` en la configuración de tus targets, Databricks CLI recurrirá de forma silenciosa al perfil local marcado como `(Default)`. Si trabajas con múltiples clientes o cuentas en tu PC, corres el riesgo crítico de que un comando de prueba despliegue accidentalmente recursos y datos en el Workspace de producción o de otra empresa por error. *Indicar el perfil explícitamente es tu escudo de seguridad.*
 
 ### 3. Gestión de Perfiles por Defecto y Sesiones Expiradas (Tokens Inválidos)
 El CLI de Databricks tiene un perfil marcado como **`(Default)`** (que suele ser el primero con el que inicias sesión o tu correo principal). Al correr comandos generales de inicialización de bundles (como `databricks bundle init`), el CLI intentará usar este perfil por defecto de forma automática.
@@ -269,6 +277,15 @@ En un entorno de ingeniería de datos moderno y profesional, **Git** y **DAB** n
 
 - **Git** es la fuente única de verdad para el código y la configuración (se encarga del control de versiones, ramas, revisiones por pares y Pull Requests).
 - **DAB** es el motor que traduce ese código y configuraciones YAML en recursos reales ejecutándose en Databricks (se encarga del despliegue, sincronización y validación).
+
+> [!IMPORTANT]
+> **⚠️ REGLA DE ORO DEL DESARROLLO (Orden de Ejecución Obligatorio):**
+> 
+> El flujo de trabajo exige un orden estricto de pasos para evitar "contaminar" el repositorio de Git con código roto:
+> 1.  **Primero se testea con DABs:** Despliegas tu código y tus recursos de prueba en la nube usando `databricks bundle deploy` o `sync` para certificar en Databricks Web que todo corre y compila perfectamente de extremo a extremo.
+> 2.  **Luego se sube a Git:** Una vez (y solo cuando) la prueba en el Workspace web haya sido **100% exitosa**, procedes a registrar tus cambios en Git (`git commit`) y enviarlos a GitHub (`git push`).
+> 
+> *Nunca subas código al repositorio remoto que no haya sido previamente validado y ejecutado con éxito en Databricks mediante DAB.*
 
 ### Arquitectura del Flujo de Trabajo
 
