@@ -38,13 +38,13 @@ def read_dbfs_file_spark(path: str, format: str = "csv"):
         df.show(5)
     except Exception as e:
         print(f"Error al leer con Spark {path}: {e}")
-        
+
 
 if __name__ == "__main__":
     # 1. Exploración de carpetas usando el SDK
-    list_dbfs_path("/")
-    list_dbfs_path("/FileStore")
-    list_dbfs_path("/databricks-datasets")
+    # list_dbfs_path("/")
+    # list_dbfs_path("/FileStore")
+    list_dbfs_path("/databricks-datasets//online_retail")
     
     # 2. Ejemplo de cómo consultar datos usando Spark (Databricks Connect)
     # Descomenta y ajusta la ruta para leer un archivo real

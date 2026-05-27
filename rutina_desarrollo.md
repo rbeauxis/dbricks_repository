@@ -9,8 +9,9 @@ Guía rápida para iniciar y operar tu entorno de desarrollo.
 ```
 [ ] 1. Abrir VS Code en c:\Users\rodri\repo_snowflake\databricks
 [ ] 2. Levantar el cluster DemoCluster (Panel Databricks → ▶)
-[ ] 3. Asegurar que el intérprete activo es `.venv311` (Python 3.11) en la barra inferior de VS Code
+[ ] 3. Asegurar que el intérprete activo es `.venv` (creado con uv) en la barra inferior de VS Code
 [ ] 4. Confirmar que el cluster está conectado en la extensión Databricks (icono verde)
+[ ] 5. Confirmar que tienes un archivo `.env` configurado localmente.
 ```
 
 ---
@@ -216,9 +217,10 @@ git push -u origin feature/mi-nueva-tarea
 
 | Problema | Solución |
 |----------|----------|
-| `ModuleNotFoundError: No module named 'distutils'` + `KeyError: 'spark'` | Estás usando Python 3.12 para el venv. Recrea con Python 3.11: `py -3.11 -m venv .venv311` y reinstala `databricks-connect==13.3.*` |
-| `ImportError: cannot import name '_with_origin'` | Versión de PySpark incorrecta. Reinstala: `.venv311\Scripts\pip install databricks-connect==13.3.* --force-reinstall` |
-| VS Code pide `ipykernel` | Ejecuta: `.venv311\Scripts\pip install ipykernel` |
+| `ModuleNotFoundError: No module named 'google.protobuf'` | Versión de `protobuf` incompatible. Corre `uv sync` o instala explícitamente: `pip install "protobuf<5.0.0,>=4.25.8"` |
+| `databricks-connect package is not installed` | VS Code está apuntando al Python global o a un `venv` roto. Asegúrate de elegir la ruta `${workspaceFolder}\.venv\Scripts\python.exe` y haber corrido `uv sync`. |
+| Error instalando con `pip install -e .[dev]` | Nuestro `pyproject.toml` usa `[dependency-groups]` (estándar de `uv`). Si usas `pip` directo, instalará la app pero no las herramientas de desarrollo. Usa `uv sync` o instala `databricks-connect` manualmente. |
+| VS Code pide `ipykernel` | Ejecuta: `uv pip install ipykernel` (o `pip install ipykernel` en tu venv activo) |
 | Linter marca variables de `%run` como indefinidas (e.g. `full_name`) | Es un falso positivo esperado. El archivo `__builtins__.pyi` en la raíz del proyecto mitiga esto para los globals de Databricks. Las variables de `%run` no tienen solución estática perfecta. |
 | No veo los botones `Run Cell` | Asegúrate que el archivo tenga `# Databricks notebook source` en la línea 1 y que la extensión Databricks esté activa. |
 | El cluster no arranca | Revisa el límite de cuota en tu suscripción de Azure o reinicia el cluster desde la Web UI. |

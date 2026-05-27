@@ -24,13 +24,13 @@ graph LR
 
 | Herramienta     | Versión    | Instalación |
 |-----------------|------------|-------------|
-| Python          | 3.11.9 ⚠️  | `winget install Python.Python.3.11` (ver nota abajo) |
-| Python          | 3.12.8     | [python.org](https://python.org) (sistema, NO usar para el venv) |
+| Python          | >=3.10, <3.13 | [python.org](https://python.org) |
 | Git             | (Actual)   | [git-scm.com](https://git-scm.com) |
 | VS Code         | (Actual)   | [visualstudio.com](https://code.visualstudio.com) |
-| Databricks CLI  | 0.298.0    | `winget install Databricks.DatabricksCLI` |
+| Databricks CLI  | (Actual)   | `winget install Databricks.DatabricksCLI` |
+| uv              | (Actual)   | `pip install uv` (Recomendado para dependencias rápidas) |
 
-> **⚠️ IMPORTANTE — Python 3.11 es obligatorio para el venv:** El cluster usa **DBR 13.3**, que internamente corre Python 3.10. `databricks-connect==13.3.*` depende de `distutils`, módulo eliminado en Python 3.12. Usar Python 3.12 para el venv genera `ModuleNotFoundError: No module named 'distutils'` y `KeyError: 'spark'`.
+> **⚠️ IMPORTANTE — Python y Databricks Connect 15.4:** El cluster usa **DBR 15.4 LTS**. Este runtime es muy estricto con las dependencias. Debemos forzar el uso de `pandas<3`, `numpy<2` y versiones específicas de `protobuf` (`>=4.25.8, <5.0.0`) para evitar el error `ModuleNotFoundError: No module named 'google.protobuf'`. Usaremos `uv` para manejar esta complejidad automáticamente.
 
 ---
 
@@ -50,31 +50,49 @@ git remote set-url origin https://github.com/rbeauxis/dbricks_repository.git
 # (Ya creado en la raíz)
 ```
 
-### Paso 2: Configuración del Entorno de Desarrollo (venv con Python 3.11)
-El venv **debe** crearse con Python 3.11 para compatibilidad con DBR 13.3.
+### Paso 2: Configuración del Entorno de Desarrollo (uv sync)
 
-1. **Verificar que Python 3.11 está disponible:**
-   ```powershell
-   py -3.11 --version
-   # Si falla: winget install Python.Python.3.11
-   ```
-2. **Crear el venv con Python 3.11:**
-   ```powershell
-   py -3.11 -m venv .venv311
-   ```
-3. **Instalar dependencias clave:**
-   Instalamos el SDK de Databricks y el soporte para celdas interactivas de VS Code:
-   ```powershell
-   # SDK de conexión remota con el cluster
-   .venv311\Scripts\pip install databricks-connect==13.3.*
+Recomendamos fuertemente usar **`uv`** en lugar de `pip` tradicional. Nuestro archivo `pyproject.toml` utiliza la sección moderna `[dependency-groups]` (estándar PEP 735 incipiente) para las herramientas de desarrollo, la cual `pip` suele ignorar por defecto.
 
-   # Soporte para ejecutar celdas interactivas (Notebooks) en VS Code
-   .venv311\Scripts\pip install ipykernel
+1. **Crear y Sincronizar el ambiente (.venv):**
+   Asegúrate de estar en la raíz del proyecto y ejecuta:
+   ```powershell
+   uv sync
    ```
-   > **⚠️ IMPORTANTE:** No instales `pyspark` manualmente. `databricks-connect` ya incluye de forma interna la versión correcta de PySpark compatible con el cluster.
-4. **Seleccionar el intérprete en VS Code:**
-   - `Ctrl+Shift+P` → **"Python: Select Interpreter"** → elegir `.venv311` (o el intérprete de tu entorno local si no lo ves listado).
-   - O en la extensión de Databricks: `Ctrl+Shift+P` → **"Databricks: Select Python Interpreter"** → apuntar a `.venv311\Scripts\python.exe`.
+   > Esto creará automáticamente la carpeta **`.venv`** e instalará todo lo declarado en el proyecto, resolviendo correctamente los conflictos de `databricks-connect==15.4.*`, `pandas`, `numpy` y `protobuf`.
+
+2. **(Opcional) Si te ves obligado a usar `pip` clásico:**
+   Si no tienes `uv` y prefieres `pip`, primero asegúrate de tener un entorno activado (`python -m venv venv`), pero ten cuidado porque no leerá el grupo `dev`. Deberás instalar explícitamente y con comillas estrictas:
+   ```powershell
+   # Instalación forzada en caso de usar pip directo
+   pip install -e .
+   pip install "databricks-connect>=15.4,<15.5" "pandas<3" "numpy<2" "protobuf<5.0.0,>=4.25.8" ipykernel pytest ruff databricks-dlt
+   ```
+
+3. **Seleccionar el intérprete en VS Code:**
+   - Presiona `Ctrl+Shift+P` → **"Python: Select Interpreter"**.
+   - Elige **"Enter interpreter path..."**.
+   - Pega o selecciona la ruta de tu entorno recién creado: `${workspaceFolder}\.venv\Scripts\python.exe` (o `venv` si usaste pip clásico).
+   > **⚠️ CRÍTICO:** Si no haces esto, la extensión de Databricks usará el Python global y lanzará el error `databricks-connect package is not installed`.
+
+### Paso 3: Configuración Variables de Entorno (.env)
+Para el framework de base de datos local y simulaciones de Databricks, crea un archivo `.env` en la raíz (ignorarlo en git):
+
+```ini
+# .env
+ENTORNO_LOCAL=true
+DATABRICKS_DEV_USER=tu.correo@empresa.com
+
+# Databricks Auth (si no usa CLI local puro)
+DATABRICKS_HOST=https://<workspace>.azuredatabricks.net
+DATABRICKS_TOKEN=dapi...
+
+# Base de datos SQL Server
+SQLSERVER_HOST=127.0.0.1
+SQLSERVER_USER=sa
+SQLSERVER_PASSWORD=M88152hi$
+SQLSERVER_DB=tu_db
+```
 
 ---
 
@@ -173,7 +191,7 @@ Para inicializar un proyecto de Databricks Asset Bundles (DAB) completamente des
     # Borrar la subcarpeta ya vacía
     Remove-Item -Path .\dbs_project -Recurse -Force -ErrorAction SilentlyContinue;
     ```
-11. **Optimizar y corregir el archivo `.gitignore`:** El asistente de inicialización del bundle creará un `.gitignore` genérico que sobrescribirá tus exclusiones locales. Edita de inmediato este archivo para fusionar las exclusiones de tus entornos virtuales locales (como `.venv311/`, `venv/`, `__builtins__.pyi`), garantizando que Git no rastree archivos pesados.
+11. **Optimizar y corregir el archivo `.gitignore`:** El asistente de inicialización del bundle creará un `.gitignore` genérico que sobrescribirá tus exclusiones locales. Edita de inmediato este archivo para fusionar las exclusiones de tus entornos virtuales locales (como `.venv/`, `venv/`, `__builtins__.pyi`), garantizando que Git no rastree archivos pesados ni tu archivo de contraseñas `.env`.
 12. **Inicializar y Conectar tu Repositorio Git de Cero:** Con tu lienzo en blanco estructurado en la raíz, establece tu repositorio Git y conéctalo con tu repositorio remoto de GitHub ejecutando:
     ```powershell
     # 1. Inicializar la base de datos de Git local

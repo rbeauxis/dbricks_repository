@@ -21,3 +21,4 @@ _output/
 _migration_input/
 agents/
 output/
+.env
