@@ -9,6 +9,7 @@ Este documento describe la arquitectura del framework de procesamiento de datos 
 El `core` es una librería interna de Python que implementa un framework ETL reutilizable. Provee:
 
 - **Gestión de nombres** de tablas con Unity Catalog
+- **Arquitectura Medallón** de 4 capas: Landing (Externa/Workspace), RAW (Bronze), CURATED (Silver), CONSUMPTION (Gold)
 - **Operaciones de datos** desacopladas del motor (PySpark / Delta Lake)
 - **Un framework de 12 pasos** (`BaseProcessing`) para estandarizar pipelines ETL
 - **Integración con Google Drive** para carga de archivos Excel / CSV
@@ -21,8 +22,11 @@ La `SparkSession` **nunca se instancia en el core**. La provee el runtime de Dat
 ## 2. Estructura del Directorio
 
 ```
-src/core/
-├── __init__.py                          # Exportaciones públicas del paquete
+src/
+├── init/                                # Scripts SQL (DDL) para creación de infraestructura (Esquemas, Unity Catalog)
+│   └── 00_init_dw_environment.sql       # Inicialización de capas gobernadas
+├── core/
+│   ├── __init__.py                      # Exportaciones públicas del paquete
 ├── secrets.py                           # Gestión de secretos (dbutils / .env)
 │
 ├── db/
@@ -78,7 +82,18 @@ Construye rutas de tabla de 3 niveles siguiendo el estándar de Unity Catalog:
 catalog . schema_ambiente . tabla
 ```
 
-### Ambientes disponibles
+El catálogo por defecto utilizado como estándar en Unity Catalog es `main`.
+
+### Capas de la Arquitectura Medallón
+
+La plataforma adopta la arquitectura medallón con 4 capas lógicas:
+
+1. **Landing (Zona de Aterrizaje)**: **Externa** al catálogo gestionado (Unity Catalog). Los archivos físicos (CSV, JSON) se depositan en el Workspace (`LANDING_URL`) o en un Data Lake externo. No utiliza un esquema de DB gestionado.
+2. **RAW (Bronze)**: Primera capa gestionada de Unity Catalog. Contiene Tablas Delta administradas (Managed Tables) con los datos crudos ingestados desde Landing.
+3. **CURATED (Silver)**: Tablas gestionadas con datos limpios, estandarizados y combinados.
+4. **CONSUMPTION (Gold)**: Tablas gestionadas orientadas al usuario final (modelos dimensionales en estrella, agregaciones listas para BI).
+
+### Ambientes disponibles en el Framework
 
 | `Environment` | Valor del esquema |
 |---|---|
